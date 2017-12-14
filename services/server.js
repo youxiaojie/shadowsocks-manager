@@ -1,5 +1,3 @@
-'use strict';
-
 const log4js = require('log4js');
 const logger = log4js.getLogger('system');
 
@@ -48,11 +46,6 @@ const receiveCommand = async (data, code) => {
       const port = +message.port;
       return shadowsocks.removeAccount(port);
     } else if (message.command === 'list') {
-      // const options = message.options || {
-      //   flow: true,
-      //   startTime: new Date(Date.now() - 5 * 60 * 1000),
-      //   endTime: Date.now(),
-      // };
       return shadowsocks.listAccount();
     } else if (message.command === 'pwd') {
       const port = +message.port;
@@ -61,12 +54,25 @@ const receiveCommand = async (data, code) => {
     } else if (message.command === 'flow') {
       const options = message.options;
       return shadowsocks.getFlow(options);
+    } else if (message.command === 'version') {
+      return shadowsocks.getVersion();
+    } else if (message.command === 'ip') {
+      return shadowsocks.getClientIp(message.port);
     } else {
       return Promise.reject();
     }
   } catch(err) {
     throw err;
   }
+};
+
+const pack = (data) => {
+  const message = JSON.stringify(data);
+  const dataBuffer = Buffer.from(message);
+  const length = dataBuffer.length;
+  const lengthBuffer = Buffer.from(('0000' + length.toString(16)).substr(-4), 'hex');
+  const pack = Buffer.concat([lengthBuffer, dataBuffer]);
+  return pack;
 };
 
 const checkData = (receive) => {
@@ -88,10 +94,11 @@ const checkData = (receive) => {
       return;
     }
     receiveCommand(data, code).then(s => {
-      receive.socket.end(JSON.stringify({code: 0, data: s}));
+      receive.socket.end(pack({code: 0, data: s}));
       // receive.socket.close();
     }, e => {
-      receive.socket.end(JSON.stringify({code: 1}));
+      logger.error(e);
+      receive.socket.end(pack({code: 1}));
       // receive.socket.close();
     });
     if(buffer.length > length + 2) {
@@ -115,7 +122,7 @@ const server = net.createServer(socket => {
     // console.log('close');
   });
 }).on('error', (err) => {
-  console.log(`socket error:\n${err.stack}`);
+  logger.error(`socket error: `, err);
 });
 
 server.listen({

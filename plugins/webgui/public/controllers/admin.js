@@ -1,13 +1,22 @@
-const app = require('../index').app;
+const app = angular.module('app');
 
-app.controller('AdminController', ['$scope', '$mdMedia', '$mdSidenav', '$state', '$http',
-  ($scope, $mdMedia, $mdSidenav, $state, $http) => {
+app.controller('AdminController', ['$scope', '$mdMedia', '$mdSidenav', '$state', '$http', '$document', '$interval', '$timeout', '$localStorage',
+  ($scope, $mdMedia, $mdSidenav, $state, $http, $document, $interval, $timeout, $localStorage) => {
+    if ($localStorage.home.status !== 'admin') {
+      $state.go('home.index');
+    } else {
+      $scope.setMainLoading(false);
+    }
     $scope.innerSideNav = true;
-    $scope.menuButton = function() {
-      if ($mdMedia('gt-sm')) {
-        $scope.innerSideNav = !$scope.innerSideNav;
+    $scope.sideNavWidth = () => {
+      if($scope.innerSideNav) {
+        return {
+          width: '200px',
+        };
       } else {
-        $mdSidenav('left').toggle();
+        return {
+          width: '60px',
+        };
       }
     };
     $scope.menus = [{
@@ -27,21 +36,36 @@ app.controller('AdminController', ['$scope', '$mdMedia', '$mdSidenav', '$state',
       icon: 'account_circle',
       click: 'admin.account',
     }, {
-      name: '续费码',
+      name: '订单',
       icon: 'attach_money',
-      click: 'admin.server',
+      click: 'admin.pay',
     }, {
       name: '设置',
       icon: 'settings',
-      click: 'admin.server',
+      click: 'admin.settings',
+    }, {
+      name: 'divider',
     }, {
       name: '退出',
       icon: 'exit_to_app',
       click: function() {
-        $http.post('/api/logout');
-        $state.go('home.index');
+        $http.post('/api/home/logout').then(() => {
+          $localStorage.home = {};
+          $localStorage.admin = {};
+          $state.go('home.index');
+        });
       },
     }];
+    $scope.menuButton = function() {
+      if($scope.menuButtonIcon) {
+        return $scope.menuButtonClick();
+      }
+      if ($mdMedia('gt-sm')) {
+        $scope.innerSideNav = !$scope.innerSideNav;
+      } else {
+        $mdSidenav('left').toggle();
+      }
+    };
     $scope.menuClick = (index) => {
       $mdSidenav('left').close();
       if(typeof $scope.menus[index].click === 'function') {
@@ -50,290 +74,240 @@ app.controller('AdminController', ['$scope', '$mdMedia', '$mdSidenav', '$state',
         $state.go($scope.menus[index].click);
       }
     };
+    $scope.title = '';
+    $scope.setTitle = str => { $scope.title = str; };
     $scope.fabButton = false;
     $scope.fabButtonClick = () => {};
     $scope.setFabButton = (fn) => {
       $scope.fabButton = true;
       $scope.fabButtonClick = fn;
     };
+    $scope.menuButtonIcon = '';
+    $scope.menuButtonClick = () => {};
+
+    let isHistoryBackClick = false;
+    let menuButtonHistoryBackState = '';
+    let menuButtonHistoryBackStateParams = {};
+    const menuButtonBackFn = (to, toParams = {}) => {
+      if(menuButtonHistoryBackState) {
+        return function () {
+          isHistoryBackClick = true;
+          $state.go(menuButtonHistoryBackState, menuButtonHistoryBackStateParams);
+        };
+      } else {
+        return function () {
+          isHistoryBackClick = false;
+          $state.go(to, toParams);
+        };
+      }
+    };
+    $scope.setMenuButton = (icon, to, toParams = {}) => {
+      $scope.menuButtonIcon = icon;
+      if(typeof to === 'string') {
+        $scope.menuButtonClick = menuButtonBackFn(to, toParams);
+      } else {
+        isHistoryBackClick = true;
+        $scope.menuButtonClick = to;
+      }
+    };
+    $scope.menuRightButtonIcon = '';
+    $scope.menuRightButtonClick = () => {
+      $scope.$broadcast('RightButtonClick', 'click');
+    };
+    $scope.setMenuRightButton = (icon) => {
+      $scope.menuRightButtonIcon = icon;
+    };
+    $scope.menuSearchButtonIcon = '';
+    $scope.menuSearch = {
+      input: false,
+      text: '',
+    };
+    $scope.menuSearchButtonClick = () => {
+      $scope.menuSearch.input = true;
+    };
+    $scope.setMenuSearchButton = (icon) => {
+      $scope.menuSearchButtonIcon = icon;
+    };
+    $scope.cancelSearch = () => {
+      $scope.menuSearch.text = '';
+      $scope.menuSearch.input = false;
+      $scope.$broadcast('cancelSearch', 'cancel');
+    };
+    $scope.interval = null;
+    $scope.setInterval = interval => {
+      $scope.interval = interval;
+    };
     $scope.$on('$stateChangeStart', function(event, toUrl, fromUrl) {
       $scope.fabButton = false;
-    });
-  }
-])
-.controller('AdminIndexController', ['$scope',
-  ($scope) => {
-    console.log('Index');
-  }
-])
-.controller('AdminServerController', ['$scope', '$http', '$state', 'moment',
-  ($scope, $http, $state, moment) => {
-    $http.get('/api/admin/server').then(success => {
-      $scope.servers = success.data;
-      $scope.servers.forEach(server => {
-        server.flow = {};
-        $http.get('/api/admin/flow/' + server.id, {
-          params: {
-            time: [
-              moment().hour(0).minute(0).second(0).millisecond(0).toDate().valueOf(),
-              moment().toDate().valueOf(),
-            ],
-          }
-        }).then(success => {
-          server.flow.today = success.data[0];
-        });
-        $http.get('/api/admin/flow/' + server.id, {
-          params: {
-            time: [
-              moment().day(0).hour(0).minute(0).second(0).millisecond(0).toDate().valueOf(),
-              moment().toDate().valueOf(),
-            ],
-          }
-        }).then(success => {
-          server.flow.week = success.data[0];
-        });
-        $http.get('/api/admin/flow/' + server.id, {
-          params: {
-            time: [
-              moment().date(1).hour(0).minute(0).second(0).millisecond(0).toDate().valueOf(),
-              moment().toDate().valueOf(),
-            ],
-          }
-        }).then(success => {
-          server.flow.month = success.data[0];
-        });
-        $http.get('/api/admin/flow/' + server.id, {
-          params: {
-            type: 'hour',
-          }
-        }).then(success => {
-          const scaleLabel = (number) => {
-            if(number < 1) {
-              return number.toFixed(1) +' B';
-            } else if (number < 1000) {
-              return number.toFixed(0) +' B';
-            } else if (number < 1000000) {
-              return (number/1000).toFixed(0) +' KB';
-            } else if (number < 1000000000) {
-              return (number/1000000).toFixed(0) +' MB';
-            } else if (number < 1000000000000) {
-              return (number/1000000000).toFixed(1) +' GB';
-            } else {
-              return number;
-            }
-          };
-          server.chart = {
-            data: [success.data],
-            labels: ['0', '', '', '15', '', '', '30', '', '', '45', '', ''],
-            // labels: ['0', '', '', '', '', '', '6', '', '', '', '', '', '12', '', '', '', '', '', '18', '', '', '', '', '', ],
-            series: 'day',
-            datasetOverride: [{ yAxisID: 'y-axis-1' }],
-            options: {
-              tooltips: {
-                callbacks: {
-                  label: function(tooltipItem) {
-                    return scaleLabel(tooltipItem.yLabel);
-                  }
-                }
-              },
-              scales: {
-                yAxes: [
-                  {
-                    id: 'y-axis-1',
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    ticks: {
-                      callback: scaleLabel,
-                    },
-                  }
-                ]
-              }
-            },
-          };
-        });
-      });
-    });
-    $scope.toServerPage = (serverId) => {
-      $state.go('admin.serverPage', { serverId });
-    };
-    $scope.setFabButton(() => {
-      $state.go('admin.addServer');
-    });
-  }
-])
-.controller('AdminServerPageController', ['$scope', '$state', '$stateParams', '$http',
-  ($scope, $state, $stateParams, $http) => {
-    $http.get('/api/admin/server/' + $stateParams.serverId).then(success => {
-      $scope.server = success.data;
-    });
-  }
-])
-.controller('AdminAddServerController', ['$scope', '$state', '$stateParams', '$http',
-  ($scope, $state, $stateParams, $http) => {
-    $scope.server = {};
-    $scope.confirm = () => {
-      $http.post('/api/admin/server', {
-        name: $scope.server.name,
-        address: $scope.server.address,
-        port: +$scope.server.port,
-        password: $scope.server.password,
-      }).then(success => {
-        $state.go('admin.server');
-      });
-    };
-    $scope.cancel = () => {
-      $state.go('admin.server');
-    };
-  }
-])
-.controller('AdminUserController', ['$scope', '$state', '$stateParams', '$http',
-  ($scope, $state, $stateParams, $http) => {
-    $http.get('/api/admin/user').then(success => {
-      $scope.users = success.data;
-    });
-  }
-])
-.controller('AdminAccountController', ['$scope', '$state', '$stateParams', '$http',
-  ($scope, $state, $stateParams, $http) => {
-    const getAccount = () => {
-      $http.get('/api/admin/account').then(success => {
-        $scope.account = success.data;
-      });
-    };
-    getAccount();
-    $scope.setFabButton(() => {
-      $state.go('admin.addAccount');
-    });
-    // $scope.deleteAccount = (id) => {
-    //   $http.delete('/api/admin/account/' + id).then(success => {
-    //     getAccount();
-    //   });
-    // };
-    $scope.editAccount = id => {
-      $state.go('admin.editAccount', { accountId: id });
-    };
-  }
-])
-.controller('AdminAddAccountController', ['$scope', '$state', '$stateParams', '$http', '$mdBottomSheet',
-  ($scope, $state, $stateParams, $http, $mdBottomSheet) => {
-    $scope.typeList = [
-      {key: '不限量', value: 1},
-      {key: '按周', value: 2},
-      {key: '按月', value: 3},
-      {key: '按天', value: 4},
-      {key: '小时', value: 5},
-    ];
-    $scope.timeLimit = {
-      '2': 7 * 24 * 3600000,
-      '3': 30 * 24 * 3600000,
-      '4': 24 * 3600000,
-      '5': 3600000,
-    };
-    $scope.account = {
-      time: Date.now(),
-      limit: 1,
-      flow: 100,
-    };
-    $scope.cancel = () => {
-      $state.go('admin.account');
-    };
-    $scope.confirm = () => {
-      $http.post('/api/admin/account', {
-        type: +$scope.account.type,
-        port: +$scope.account.port,
-        password: $scope.account.password,
-        time: $scope.account.time,
-        limit: +$scope.account.limit,
-        flow: +$scope.account.flow * 1000 * 1000,
-      }).then(success => {
-        $state.go('admin.account');
-      });
-    };
-    $scope.pickTime = () => {
-      $mdBottomSheet.show({
-        templateUrl: '/public/views/admin/picktime.html',
-        preserveScope: true,
-        scope: $scope,
-      });
-    };
-    $scope.setStartTime = (number) => {
-      $scope.account.time += number;
-    };
-    $scope.setLimit = (number) => {
-      $scope.account.limit += number;
-      if($scope.account.limit < 1) {
-        $scope.account.limit = 1;
-      }
-    };
-  }
-])
-.controller('AdminEditAccountController', ['$scope', '$state', '$stateParams', '$http', '$mdBottomSheet',
-  ($scope, $state, $stateParams, $http, $mdBottomSheet) => {
-    $scope.typeList = [
-      {key: '不限量', value: 1},
-      {key: '按周', value: 2},
-      {key: '按月', value: 3},
-      {key: '按天', value: 4},
-      {key: '小时', value: 5},
-    ];
-    $scope.timeLimit = {
-      '2': 7 * 24 * 3600000,
-      '3': 30 * 24 * 3600000,
-      '4': 24 * 3600000,
-      '5': 3600000,
-    };
-    $scope.account = {
-      time: Date.now(),
-      limit: 1,
-      flow: 100,
-    };
-    const accountId = $stateParams.accountId;
-    $http.get('/api/admin/account/' + accountId).then(success => {
-      $scope.account.type = success.data.type;
-      $scope.account.port = success.data.port;
-      $scope.account.password = success.data.password;
-      if(success.data.type >= 2 && success.data.type <= 5) {
-        $scope.account.time = success.data.data.create;
-        $scope.account.limit = success.data.data.limit;
-        $scope.account.flow = success.data.data.flow / 1000000;
+      $scope.title = '';
+      $scope.menuButtonIcon = '';
+      $scope.menuRightButtonIcon = '';
+      $scope.menuSearchButtonIcon = '';
+      $scope.menuSearch.text = '';
+      $scope.menuSearch.input = false;
+      $scope.interval && $interval.cancel($scope.interval);
+      if(!isHistoryBackClick) {
+        const str = angular.copy($state.current.name);
+        const obj = angular.copy($state.params);
+        menuButtonHistoryBackState = str;
+        menuButtonHistoryBackStateParams = obj;
+      } else {
+        isHistoryBackClick = false;
+        menuButtonHistoryBackState = '';
+        menuButtonHistoryBackStateParams = {};
       }
     });
-    $scope.cancel = () => {
-      $state.go('admin.account');
+  }
+])
+.controller('AdminIndexController', ['$scope', '$state', 'adminApi', '$localStorage', '$interval', 'orderDialog',
+  ($scope, $state, adminApi, $localStorage, $interval, orderDialog) => {
+    $scope.setTitle('首页');
+    if($localStorage.admin.indexInfo) {
+      $scope.signupUsers = $localStorage.admin.indexInfo.data.signup;
+      $scope.loginUsers = $localStorage.admin.indexInfo.data.login;
+      $scope.orders = $localStorage.admin.indexInfo.data.order;
+      $scope.paypalOrders = $localStorage.admin.indexInfo.data.paypalOrder;
+    }
+    $scope.toUser = id => {
+      $state.go('admin.userPage', { userId: id });
     };
-    $scope.confirm = () => {
-      $http.put('/api/admin/account/' + accountId + '/data', {
-        type: +$scope.account.type,
-        port: +$scope.account.port,
-        password: $scope.account.password,
-        time: $scope.account.time,
-        limit: +$scope.account.limit,
-        flow: +$scope.account.flow * 1000 * 1000,
-      }).then(success => {
-        $state.go('admin.account');
+    const updateIndexInfo = () => {
+      adminApi.getIndexInfo().then(success => {
+        $localStorage.admin.indexInfo = {
+          time: Date.now(),
+          data: success,
+        };
+        $scope.signupUsers = success.signup;
+        $scope.loginUsers = success.login;
+        $scope.orders = success.order;
+        $scope.paypalOrders = success.paypalOrder;
       });
     };
-    $scope.pickTime = () => {
-      $mdBottomSheet.show({
-        templateUrl: '/public/views/admin/picktime.html',
-        preserveScope: true,
-        scope: $scope,
-      });
-    };
-    $scope.setStartTime = (number) => {
-      $scope.account.time += number;
-    };
-    $scope.setLimit = (number) => {
-      $scope.account.limit += number;
-      if($scope.account.limit < 1) {
-        $scope.account.limit = 1;
+    updateIndexInfo();
+    $scope.$on('visibilitychange', (event, status) => {
+      if(status === 'visible') {
+        if($localStorage.admin.indexInfo && Date.now() - $localStorage.admin.indexInfo.time >= 15 * 1000) {
+          updateIndexInfo();
+        }
       }
+    });
+    $scope.setInterval($interval(() => {
+      if($localStorage.admin.indexInfo && Date.now() - $localStorage.admin.indexInfo.time >= 90 * 1000) {
+        updateIndexInfo();
+      }
+    }, 15 * 1000));
+    $scope.showOrderInfo = order => {
+      orderDialog.show(order);
     };
-    $scope.deleteAccount = () => {
-      $http.delete('/api/admin/account/' + accountId).then(success => {
-        $state.go('admin.account');
+  }
+])
+.controller('AdminPayController', ['$scope', 'adminApi', 'orderDialog', '$mdMedia', '$localStorage', 'orderFilterDialog', '$timeout', '$state',
+  ($scope, adminApi, orderDialog, $mdMedia, $localStorage, orderFilterDialog, $timeout, $state) => {
+    $scope.setTitle('订单');
+    $scope.setMenuSearchButton('search');
+    $scope.showOrderInfo = order => {
+      orderDialog.show(order);
+    };
+    $scope.myPayType = '支付宝';
+    let tabSwitchTime = 0;
+    $scope.payTypes = [{ name: '支付宝' }, { name: 'Paypal' }];
+    $scope.selectPayType = type => {
+      tabSwitchTime = Date.now();
+      $scope.myPayType = type;
+      $scope.orders = [];
+      $scope.currentPage = 1;
+      $scope.isOrderPageFinish = false;
+      $scope.getOrders();
+    };
+    if(!$localStorage.admin.orderFilterSettings) {
+      $localStorage.admin.orderFilterSettings = {
+        filter: {
+          CREATE: true,
+          WAIT_BUYER_PAY: true,
+          TRADE_SUCCESS: true,
+          FINISH: true,
+          TRADE_CLOSED: true,
+        },
+      };
+    }
+    $scope.orderFilter = $localStorage.admin.orderFilterSettings;
+    $scope.currentPage = 1;
+    $scope.isOrderLoading = false;
+    $scope.isOrderPageFinish = false;
+    $scope.orders = [];
+    const getPageSize = () => {
+      if($mdMedia('xs')) { return 30; }
+      if($mdMedia('sm')) { return 30; }
+      if($mdMedia('md')) { return 40; }
+      if($mdMedia('gt-md')) { return 50; }
+    };
+    $scope.getOrders = (search) => {
+      const oldTabSwitchTime = tabSwitchTime;
+      $scope.isOrderLoading = true;
+      adminApi.getOrder($scope.myPayType, {
+        page: $scope.currentPage,
+        pageSize: getPageSize(),
+        search,
+        // sort: $scope.userSort.sort,
+        filter: Object.keys($scope.orderFilter.filter).filter(f => $scope.orderFilter.filter[f]),
+      }).then(success => {
+        if(oldTabSwitchTime !== tabSwitchTime) { return; }
+        if(!search && $scope.menuSearch.text) { return; }
+        if(search && search !== $scope.menuSearch.text) { return; }
+        success.orders.forEach(f => {
+          $scope.orders.push(f);
+        });
+        if(success.maxPage > $scope.currentPage) {
+          $scope.currentPage++;
+        } else {
+          $scope.isOrderPageFinish = true;
+        }
+        $scope.isOrderLoading = false;
+      }).catch(() => {
+        if($state.current.name !== 'admin.pay') { return; }
+        $timeout(() => {
+          $scope.getOrders(search);
+        }, 5000);
       });
     };
+    $scope.$on('cancelSearch', () => {
+      $scope.orders = [];
+      $scope.currentPage = 1;
+      $scope.isOrderPageFinish = false;
+      $scope.getOrders();
+    });
+    let timeoutPromise;
+    const orderFilter = () => {
+      $scope.orders = [];
+      $scope.currentPage = 1;
+      $scope.isOrderPageFinish = false;
+      $scope.getOrders($scope.menuSearch.text);
+    };
+    $scope.$watch('menuSearch.text', () => {
+      if(!$scope.menuSearch.text) { return; }
+      timeoutPromise && $timeout.cancel(timeoutPromise);
+      timeoutPromise = $timeout(() => {
+        orderFilter();
+      }, 500);
+    });
+    $scope.view = (inview) => {
+      if(!inview || $scope.isOrderLoading || $scope.isOrderPageFinish) { return; }
+      $scope.getOrders();
+    };
+    $scope.setMenuRightButton('sort_by_alpha');
+    $scope.orderFilterDialog = () => {
+      orderFilterDialog.show().then(() => {
+        $scope.orders = [];
+        $scope.currentPage = 1;
+        $scope.isOrderPageFinish = false;
+        $scope.getOrders();
+      });
+    };
+    $scope.$on('RightButtonClick', () => {
+      $scope.orderFilterDialog();
+    });
   }
 ]);
+
+
+

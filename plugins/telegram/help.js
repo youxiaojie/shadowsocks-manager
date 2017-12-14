@@ -1,5 +1,3 @@
-'use strict';
-
 const telegram = appRequire('plugins/telegram/index').telegram;
 
 telegram.on('message', message => {
@@ -16,7 +14,7 @@ telegram.on('message', message => {
   pwd {port} {password}
 
   listserver
-  switchserver {name}
+  switchserver {id}
   delserver {name}
   addserver {name} {host} {port} {password}
   editserver {name} {newName} {host} {port} {password}

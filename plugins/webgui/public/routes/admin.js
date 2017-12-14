@@ -1,51 +1,67 @@
-const app = require('../index').app;
+const app = angular.module('app');
+const window = require('window');
+const cdn = window.cdn || '';
 
 app.config(['$stateProvider', $stateProvider => {
   $stateProvider
     .state('admin', {
       url: '/admin',
       abstract: true,
-      templateUrl: '/public/views/admin/admin.html',
+      templateUrl: `${ cdn }/public/views/admin/admin.html`,
     })
     .state('admin.index', {
       url: '/index',
       controller: 'AdminIndexController',
-      templateUrl: '/public/views/admin/index.html',
+      templateUrl: `${ cdn }/public/views/admin/index.html`,
     })
-    .state('admin.server', {
-      url: '/server',
-      controller: 'AdminServerController',
-      templateUrl: '/public/views/admin/server.html',
+    .state('admin.pay', {
+      url: '/pay',
+      controller: 'AdminPayController',
+      templateUrl: `${ cdn }/public/views/admin/pay.html`,
     })
-    .state('admin.serverPage', {
-      url: '/server/:serverId',
-      controller: 'AdminServerPageController',
-      templateUrl: '/public/views/admin/serverPage.html',
+    .state('admin.settings', {
+      url: '/settings',
+      controller: 'AdminSettingsController',
+      templateUrl: `${ cdn }/public/views/admin/settings.html`,
     })
-    .state('admin.addServer', {
-      url: '/addServer',
-      controller: 'AdminAddServerController',
-      templateUrl: '/public/views/admin/addServer.html',
+    .state('admin.notice', {
+      url: '/notice',
+      controller: 'AdminNoticeController',
+      templateUrl: `${ cdn }/public/views/admin/notice.html`,
     })
-    .state('admin.user', {
-      url: '/user',
-      controller: 'AdminUserController',
-      templateUrl: '/public/views/admin/user.html',
+    .state('admin.editNotice', {
+      url: '/notice/{noticeId:int}',
+      controller: 'AdminEditNoticeController',
+      templateUrl: `${ cdn }/public/views/admin/editNotice.html`,
     })
-    .state('admin.account', {
-      url: '/account',
-      controller: 'AdminAccountController',
-      templateUrl: '/public/views/admin/account.html',
+    .state('admin.addNotice', {
+      url: '/notice/new',
+      controller: 'AdminNewNoticeController',
+      templateUrl: `${ cdn }/public/views/admin/newNotice.html`,
     })
-    .state('admin.addAccount', {
-      url: '/addAccount',
-      controller: 'AdminAddAccountController',
-      templateUrl: '/public/views/admin/addAccount.html',
+    .state('admin.unfinished', {
+      url: '/unfinished',
+      templateUrl: `${ cdn }/public/views/admin/unfinished.html`,
     })
-    .state('admin.editAccount', {
-      url: '/account/:accountId/edit',
-      controller: 'AdminEditAccountController',
-      templateUrl: '/public/views/admin/editAccount.html',
+    .state('admin.paymentSetting', {
+      url: '/settings/payment',
+      controller: 'AdminPaymentSettingController',
+      templateUrl: `${ cdn }/public/views/admin/paymentSetting.html`,
+    })
+    .state('admin.baseSetting', {
+      url: '/settings/base',
+      controller: 'AdminBaseSettingController',
+      templateUrl: `${ cdn }/public/views/admin/baseSetting.html`,
+    })
+    .state('admin.accountSetting', {
+      url: '/settings/account',
+      controller: 'AdminAccountSettingController',
+      templateUrl: `${ cdn }/public/views/admin/accountSetting.html`,
+    })
+    .state('admin.mailSetting', {
+      url: '/settings/mail',
+      controller: 'AdminMailSettingController',
+      templateUrl: `${ cdn }/public/views/admin/mailSetting.html`,
     });
-  }])
-;
+  }
+]);

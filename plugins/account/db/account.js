@@ -1,13 +1,7 @@
-'use strict';
-
 const knex = appRequire('init/knex').knex;
 const tableName = 'account_plugin';
 
-const config = appRequire('services/config').all();
 const createTable = async() => {
-  if(config.empty) {
-    await knex.schema.dropTableIfExists(tableName);
-  }
   const exist = await knex.schema.hasTable(tableName);
   if(exist) {
     return;
@@ -21,6 +15,7 @@ const createTable = async() => {
     table.string('password');
     table.string('data');
     table.integer('status');
+    table.integer('autoRemove').defaultTo(0);
   });
 };
 

@@ -1,12 +1,17 @@
+require('babel-polyfill');
 require('./index');
 
-require('./controllers/main');
-require('./controllers/home');
-require('./controllers/user');
-require('./controllers/admin');
+require('./directives/focusMe');
 
-require('./routes/home');
-require('./routes/user');
-require('./routes/admin');
+require('./services/preloadService.js');
+require('./services/adminService.js');
+require('./services/homeService.js');
+require('./services/userService.js');
+// require('./services/websocketService.js');
 
-require('./filters/flow');
+require('./configs/index.js');
+require('./controllers/index.js');
+require('./dialogs/index.js');
+require('./filters/index.js');
+require('./translate/index.js');
+require('./routes/index.js');

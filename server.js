@@ -1,5 +1,3 @@
-'use strict';
-
 if(process.env.NODE_ENV !== 'production') {
   console.log('use babel-core/register');
   require('babel-core/register');
@@ -10,7 +8,6 @@ require('./init/log');
 const log4js = require('log4js');
 const logger = log4js.getLogger('system');
 
-// logger.setLevel(log4js.levels.ERROR);
 logger.info('System start.');
 
 process.on('unhandledRejection', (reason, p) => {
@@ -18,7 +15,8 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 process.on('uncaughtException', (err) => {
-  logger.error(`Caught exception: ${err}`);
+  logger.error(`Caught exception:`);
+  logger.error(err);
 });
 
 require('./init/utils');

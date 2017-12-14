@@ -13,8 +13,6 @@ This plugin can control shadowsocks through a telegram bot.
       telegram:
         token: '12345678:********************'
         use: true
-      flowSaver:
-        use: true
     ```
 
 3. Start `ssmgr` with type m, and you can talk to your bot to control it.  
@@ -40,10 +38,10 @@ This plugin can control shadowsocks through a telegram bot.
 ### Server
 
 * `listserver`
-* `switchserver {name}`
+* `switchserver {id}`
 * `delserver {name}`
 * `addserver {name} {host} {port} {password}`
-* `editserver {name} {newName} {host} {port} {password}`
+* `editserver {id} {name} {host} {port} {password}`
 
 ### Flow
 
